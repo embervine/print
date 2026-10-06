@@ -1,0 +1,2 @@
+const btn=document.querySelector('.menu-btn');const menu=document.querySelector('.mobile-menu');if(btn&&menu){btn.addEventListener('click',()=>menu.classList.toggle('open'));}
+document.querySelectorAll('form[data-demo]').forEach(form=>form.addEventListener('submit',e=>{e.preventDefault();const msg=form.querySelector('.form-message');if(msg){msg.textContent='Thanks! Your request has been received. Connect this form to your email or CRM before launch.';msg.style.color='#1464f4';msg.style.fontWeight='700';}}));
