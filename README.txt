@@ -1,22 +1,10 @@
-PRINTCARE CANADA WEBSITE
+PRINTVIBE COLLECTIVE — WEBSITE FILES
 
-Files:
-- index.html
-- about.html
-- services.html
-- contact.html
-- styles.css
-- script.js
-
-HOW TO OPEN
-1. Unzip the folder.
-2. Double-click index.html.
-3. For publishing, upload all files to your web host's public_html folder or deploy to Netlify/Vercel.
-
-BEFORE PUBLISHING
-- Replace PrintCare Canada with your real business name.
-- Replace placeholder phone/email/service area.
-- Connect the contact form to a real backend/form provider.
-- Add your final Privacy Policy, Terms, Refund Policy, and other required policy pages.
-- Use only manufacturer logos/brand assets in ways permitted by their trademark rules.
-- Keep the independent-service-provider disclaimer if you are not an authorized manufacturer partner.
+1. Open index.html in a browser to preview.
+2. Upload all HTML files and the assets folder to a web host to publish.
+3. Tawk.to embed supplied by the user is included in assets/main.js and loads on every page. It needs internet access.
+4. Contact form uses an email-app link rather than a server. IMPORTANT: replace placeholder support@printvibecollective.com in assets/main.js with a business email you actually own before publishing, or remove the email form and use live chat only.
+5. Photos are hosted by Unsplash and need internet access. Confirm photo licensing, suitability and availability before publishing.
+6. Do not state that on-site service is available in a specific ZIP unless it has been confirmed.
+7. All manufacturer names are used descriptively; site clearly states independent status.
+8. No financial information is included.
