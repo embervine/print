@@ -1,0 +1,234 @@
+(function () {
+  var chatUrl = "https://tawk.to/chat/6ac535b7bd710134c5c7c92b/1k495jljj";
+  var chatLink = function (label, className) {
+    return '<a href="' + chatUrl + '" target="_blank" rel="noopener noreferrer" class="' + className + '">' + label + "</a>";
+  };
+  var root = document.getElementById("help-wizard");
+  if (!root) return;
+  var brand = root.getAttribute("data-brand") || "other";
+  var themes = {
+    brother: { btn: "bg-blue-600 hover:bg-blue-700", text: "text-blue-600", accent: "#2563eb", placeholder: "e.g. MFC-L2710DW" },
+    hp: { btn: "bg-sky-600 hover:bg-sky-700", text: "text-sky-600", accent: "#0284c7", placeholder: "e.g. OfficeJet Pro 9015" },
+    epson: { btn: "bg-[#003399] hover:bg-[#002780]", text: "text-[#003399]", accent: "#003399", placeholder: "e.g. EcoTank ET-2800" },
+    canon: { btn: "bg-red-600 hover:bg-red-700", text: "text-red-600", accent: "#dc2626", placeholder: "e.g. Pixma TS3520" },
+    other: { btn: "bg-blue-600 hover:bg-blue-700", text: "text-blue-600", accent: "#2563eb", placeholder: "e.g. Printer Model" }
+  };
+  var theme = themes[brand] || themes.other;
+  var step = "start";
+  var model = "";
+  var connection = "usb";
+  var statusText = "";
+  var diagText = "";
+  var progress = 0;
+  var timers = [];
+
+  function clearTimers() {
+    timers.forEach(function (t) { clearTimeout(t); clearInterval(t); });
+    timers = [];
+  }
+  function later(fn, ms) {
+    var id = setTimeout(fn, ms);
+    timers.push(id);
+    return id;
+  }
+  function every(fn, ms) {
+    var id = setInterval(fn, ms);
+    timers.push(id);
+    return id;
+  }
+
+  function openWizard(nextStep, nextModel) {
+    clearTimers();
+    step = nextStep || "start";
+    if (typeof nextModel === "string") model = nextModel;
+    root.classList.remove("hidden");
+    root.classList.add("flex");
+    render();
+    if (step === "model-loading") {
+      later(function () { startDiagnose(); }, 1100);
+    }
+  }
+  function closeWizard() {
+    
+    clearTimers();
+    root.classList.add("hidden");
+    root.classList.remove("flex");
+  }
+  window.openHelpWizard = openWizard;
+
+  root.addEventListener("click", function (e) {
+    if (e.target === root) closeWizard();
+  });
+
+  var spinner = '<svg class="animate-spin h-12 w-12 ' + theme.text + '" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+  var downloadIcon = '<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>';
+
+  function usbMini() {
+    return '<svg class="h-12 w-16 text-slate-500" viewBox="0 0 100 80" fill="none" aria-hidden="true"><rect x="10" y="35" width="25" height="18" rx="2" fill="#94a3b8" /><path d="M5 53H40L36 56H9L5 53Z" fill="#64748b" /><rect x="70" y="30" width="25" height="24" rx="2" fill="#cbd5e1" /><path d="M35 44C50 44 50 42 70 42" stroke="' + theme.accent + '" stroke-width="2" stroke-dasharray="3 3" /></svg>';
+  }
+  function wifiMini() {
+    return '<svg class="h-12 w-16 text-slate-500" viewBox="0 0 100 80" fill="none" aria-hidden="true"><rect x="10" y="45" width="25" height="10" rx="2" fill="#94a3b8" /><line x1="22" y1="45" x2="22" y2="30" stroke="#475569" stroke-width="2" /><rect x="70" y="30" width="25" height="24" rx="2" fill="#cbd5e1" /><path d="M35 38C45 33 55 33 65 38" stroke="' + theme.accent + '" stroke-width="1.5" /><path d="M40 43C47 39 53 39 60 43" stroke="' + theme.accent + '" stroke-width="1.5" /></svg>';
+  }
+  function usbDiagram(failed) {
+    var stroke = failed ? "#ef4444" : theme.accent;
+    var extra = failed ? ' fill="#ef4444" fill-opacity="0.2" stroke="#ef4444" stroke-width="2"' : ' fill="#94a3b8"';
+    return '<svg class="h-24 w-48' + (failed ? " opacity-60" : "") + '" viewBox="0 0 200 100" fill="none" aria-hidden="true"><rect x="20" y="45" width="40" height="26" rx="3"' + extra + ' /><rect x="24" y="49" width="32" height="18" fill="#1e293b" /><path d="M12 71H68L62 76H18L12 71Z" fill="#64748b" /><rect x="130" y="40" width="50" height="32" rx="4" fill="#cbd5e1" /><rect x="138" y="32" width="34" height="8" rx="2" fill="#94a3b8" /><rect x="140" y="72" width="30" height="8" fill="#475569" /><path d="M68 71C90 71 90 56 130 56" stroke="' + stroke + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="4 4" /><circle cx="68" cy="71" r="2.5" fill="' + stroke + '" /><circle cx="130" cy="56" r="2.5" fill="' + stroke + '" /></svg>';
+  }
+  function wifiDiagram(failed) {
+    var stroke = failed ? "#ef4444" : theme.accent;
+    var extra = failed ? ' fill="#ef4444" fill-opacity="0.2" stroke="#ef4444" stroke-width="2"' : ' fill="#94a3b8"';
+    var extraLine = failed ? "" : '<path d="M90 32C101 43 101 57 90 68" stroke="' + stroke + '" stroke-width="2.5" stroke-linecap="round" />';
+    return '<svg class="h-24 w-48' + (failed ? " opacity-60" : "") + '" viewBox="0 0 200 100" fill="none" aria-hidden="true"><rect x="25" y="55" width="40" height="15" rx="3"' + extra + ' /><line x1="45" y1="55" x2="45" y2="30" stroke="' + (failed ? "#ef4444" : "#475569") + '" stroke-width="3" stroke-linecap="round" /><circle cx="33" cy="62" r="2" fill="' + (failed ? "#ef4444" : "#10b981") + '" /><circle cx="41" cy="62" r="2" fill="' + (failed ? "#ef4444" : "#10b981") + '" /><circle cx="49" cy="62" r="2" fill="' + (failed ? "#ef4444" : "#10b981") + '" /><rect x="130" y="40" width="50" height="32" rx="4" fill="#cbd5e1" /><rect x="138" y="32" width="34" height="8" rx="2" fill="#94a3b8" /><rect x="140" y="72" width="30" height="8" fill="#475569" /><path d="M70 42C75 47 75 53 70 58" stroke="' + stroke + '" stroke-width="2" stroke-linecap="round" /><path d="M80 37C88 45 88 55 80 63" stroke="' + stroke + '" stroke-width="2" stroke-linecap="round" />' + extraLine + "</svg>";
+  }
+  function diagramCard(kind, failed) {
+    return '<div class="mx-auto flex max-w-sm justify-center rounded-xl border border-slate-100 bg-slate-50 p-4">' + (kind === "usb" ? usbDiagram(failed) : wifiDiagram(failed)) + "</div>";
+  }
+
+  function issueIcon() {
+    return (
+      '<svg class="h-24 w-24 text-slate-500" viewBox="0 0 100 100" fill="none" aria-hidden="true">' +
+        '<rect x="20" y="38" width="60" height="42" rx="4" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />' +
+        '<path d="M32 38V22H68V38" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />' +
+        '<rect x="30" y="58" width="40" height="30" fill="#ffffff" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />' +
+        '<line x1="38" y1="68" x2="62" y2="68" stroke="#cbd5e1" stroke-width="3" />' +
+        '<line x1="38" y1="76" x2="54" y2="76" stroke="#cbd5e1" stroke-width="3" />' +
+        '<circle cx="75" cy="75" r="16" fill="#ef4444" stroke="#ffffff" stroke-width="3.5" />' +
+        '<line x1="69" y1="69" x2="81" y2="81" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />' +
+        '<line x1="81" y1="69" x2="69" y2="81" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />' +
+      "</svg>"
+    );
+  }
+
+  function startScan(type) {
+    clearTimers();
+    connection = type;
+    step = "loading";
+    var messages = type === "usb"
+      ? ["Reviewing USB setup steps...", "Reviewing printer queue tips...", "Reviewing driver guidance...", "Preparing next troubleshooting steps..."]
+      : ["Reviewing Wi-Fi setup steps...", "Reviewing printer queue tips...", "Reviewing driver guidance...", "Preparing next troubleshooting steps..."];
+    var i = 0;
+    statusText = messages[0];
+    render();
+    var id = every(function () {
+      i += 1;
+      if (i < messages.length) {
+        statusText = messages[i];
+        render();
+      } else {
+        clearInterval(id);
+        step = "error";
+        render();
+        later(function () {
+          if (step === "error") startDiagnose();
+        }, 2800);
+      }
+    }, 1800);
+  }
+
+  function startDiagnose() {
+    clearTimers();
+    step = "diagnosing";
+    var steps = [
+      { text: "Preparing general printer troubleshooting guidance...", progress: 20 },
+      { text: "Reviewing common spooler troubleshooting steps...", progress: 45 },
+      { text: "Reviewing printer connectivity guidance...", progress: 70 },
+      { text: "Reviewing default printer settings...", progress: 90 }
+    ];
+    var i = 0;
+    diagText = steps[0].text;
+    progress = steps[0].progress;
+    render();
+    var id = every(function () {
+      i += 1;
+      if (i < steps.length) {
+        diagText = steps[i].text;
+        progress = steps[i].progress;
+        render();
+      } else {
+        clearInterval(id);
+        step = "registry-error";
+        render();
+      }
+    }, 1800);
+  }
+
+  function helpLastPage() {
+    return (
+      '<div class="flex flex-col items-center justify-center space-y-6 px-6 py-8 text-center">' +
+        issueIcon() +
+        '<p class="max-w-md text-lg font-medium leading-relaxed text-slate-800">[ Error Code: H827PX ] Your HP printer may be experiencing a communication or configuration issue that could affect printing performance.Potential causes include driver initialization conflicts, print spooler interruptions, unstable network connectivity, or incompatible system settings.</p>' +
+        '<div class="pt-2">' +
+          '<h3 class="mb-2 text-xl font-extrabold text-slate-900">Need help with the next step?</h3>' +
+          '<p class="mx-auto mb-5 max-w-md text-sm leading-relaxed text-slate-600">Connect with our technical team for professional troubleshooting, driver assistance, and printer configuration guidance in free</p>' +
+          '<button type="button" data-go="open-chat" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3.5 text-base font-bold text-white shadow-md transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">' +
+          '<span aria-hidden="true">●</span> Chat with a Printer Specialist <span aria-hidden="true">→</span></button>' +
+          '<p class="mt-3 text-xs text-slate-500"></p>' +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  function render() {
+    var body = document.getElementById("wizard-body");
+    var html = "";
+    var connLabel = connection === "usb" ? "USB" : "Wi-Fi";
+    if (step === "start") {
+      html = '<div class="space-y-6 py-4 text-center"><button type="button" data-go="model" class="mx-auto flex cursor-pointer items-center gap-2 rounded-lg px-6 py-3 font-bold text-white shadow-md ' + theme.btn + '"><span>Let\'s Start</span><span class="text-sm">➔</span></button><p class="text-lg font-bold text-slate-600">Start Guided Printer Troubleshooting</p><div class="mx-auto flex max-w-xs justify-center"><img src="./HP Printer Setup_files/hp-printer.png" alt="Printer Setup" class="h-32 w-auto object-contain" /></div></div>';
+    } else if (step === "model") {
+      html = '<div class="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center"><p class="mb-6 text-base font-bold text-slate-700">Enter your model for printer help</p><form id="wiz-model-form" class="mx-auto max-w-sm space-y-4 text-left"><label class="mb-2 block text-xs font-bold tracking-wider text-slate-500 uppercase">Model Number:</label><input id="wiz-model" type="text" value="' + model.replace(/"/g, "&quot;") + '" placeholder="' + theme.placeholder + '" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-center font-medium text-slate-800" /><button type="submit" class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl py-3 font-bold text-white shadow-md ' + theme.btn + '"><span>Continue</span>' + downloadIcon + "</button></form></div>";
+    } else if (step === "model-loading") {
+      html = '<div class="space-y-6 py-12 text-center"><div class="relative mx-auto flex h-16 w-16 items-center justify-center">' + spinner + '</div><div><h4 class="text-lg font-bold text-slate-800">Preparing Model Guidance</h4><p class="mt-1 text-sm text-slate-500">Preparing guidance for "' + model.replace(/</g, "") + '"...</p></div></div>';
+    } else if (step === "connection") {
+      html = '<div class="space-y-6 py-2"><h4 class="text-center text-base font-bold text-slate-700">Select Wi-Fi or USB connection?</h4><div class="space-y-4"><div class="flex items-center justify-between rounded-xl border border-slate-200 p-4"><div class="flex items-center gap-4">' + usbMini() + '<h5 class="text-sm font-bold text-slate-800">USB: Connect via USB</h5></div><button type="button" data-scan="usb" class="flex cursor-pointer items-center gap-1 rounded-lg px-4 py-2 text-xs font-bold text-white ' + theme.btn + '"><span>Let\'s Start</span><span class="text-xs">➔</span></button></div><div class="flex items-center justify-between rounded-xl border border-slate-200 p-4"><div class="flex items-center gap-4">' + wifiMini() + '<h5 class="text-sm font-bold text-slate-800">WIFI: Connect via Wifi.</h5></div><button type="button" data-scan="wifi" class="flex cursor-pointer items-center gap-1 rounded-lg px-4 py-2 text-xs font-bold text-white ' + theme.btn + '"><span>Let\'s Start</span><span class="text-xs">➔</span></button></div></div></div>';
+    } else if (step === "loading") {
+      html = '<div class="space-y-6 text-center"><h4 class="text-sm font-medium text-slate-700">Review your printer\'s ' + connLabel + ' connection for a seamless setup process.</h4><p class="text-xs font-semibold tracking-wider text-slate-500 uppercase">Reviewing steps...</p>' + diagramCard(connection, false) + '<div class="mx-auto flex min-h-[50px] max-w-sm items-center justify-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"><svg class="animate-spin h-5 w-5 ' + theme.text + '" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg><span class="text-left text-sm font-bold text-slate-700">' + statusText + "</span></div></div>";
+    } else if (step === "error") {
+      html = '<div class="space-y-6 text-center"><h4 class="px-6 text-sm font-medium text-slate-700">Review your printer\'s ' + connLabel + ' connection for a seamless setup process.</h4>' + diagramCard(connection, false) + '<h5 class="text-center text-xl font-bold text-slate-800">' + (connection === "usb" ? "USB connection checklist" : "Wi-Fi connection checklist") + '</h5><div class="mx-auto max-w-sm divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-left text-xs font-bold shadow-sm"><div class="flex items-center justify-between p-4"><span class="text-slate-700">Check ' + (connection === "usb" ? "USB cable" : "Wifi") + ' on both ends.</span><button type="button" data-scan="' + connection + '" class="cursor-pointer font-extrabold ' + theme.text + '">Retry</button></div><div class="flex items-center justify-between p-4"><span class="text-slate-700">Check ' + (connection === "usb" ? "USB port" : "Wifi") + ' drivers.</span><button type="button" data-diag="1" class="cursor-pointer font-extrabold ' + theme.text + '">View Driver Guidance</button></div></div><div class="mx-auto flex max-w-sm justify-center gap-4 pt-2"><button type="button" data-diag="1" class="cursor-pointer rounded-lg px-6 py-2 text-xs font-bold text-white shadow-md ' + theme.btn + '">Troubleshoot</button>' + chatLink("Need Assistance?", "flex items-center rounded-lg px-6 py-2 text-xs font-bold text-white shadow-md " + theme.btn) + "</div></div>";
+    } else if (step === "diagnosing") {
+      html = '<div class="space-y-8 px-6 py-4 text-left"><h4 class="text-3xl font-extrabold tracking-tight text-slate-900">Scanning and Diagnosing Your Printer…</h4><div class="relative h-3 w-full overflow-hidden rounded-full border border-slate-200 bg-slate-100"><div class="' + theme.btn + ' h-full rounded-full transition-all" style="width:' + progress + '%"></div></div><div class="text-sm font-medium text-slate-500">' + diagText + "</div><p class='text-xs text-slate-500'>Please wait while we check your printer’s configuration, connectivity, and potential issues..</p></div>";
+    } else if (step === "registry-error") {
+      html = helpLastPage();
+    }
+    body.innerHTML = html;
+
+    var go = body.querySelector("[data-go]");
+    if (go) go.addEventListener("click", function () {
+      if (go.getAttribute("data-go") === "open-chat") {
+        if (window.openSupportChat) window.openSupportChat();
+        return;
+      }
+      step = go.getAttribute("data-go"); render();
+    });
+    var form = document.getElementById("wiz-model-form");
+    if (form) form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      model = document.getElementById("wiz-model").value.trim();
+      if (!model) { alert("Please enter your printer model number."); return; }
+      function continueWizard() {
+        step = "model-loading";
+        render();
+        later(function () { startDiagnose(); }, 1100);
+      }
+      if (window.openLeadOverlay) {
+        window.openLeadOverlay({ model: model, onSuccess: continueWizard });
+        return;
+      }
+      continueWizard();
+    });
+    body.querySelectorAll("[data-scan]").forEach(function (btn) {
+      btn.addEventListener("click", function () { startScan(btn.getAttribute("data-scan")); });
+    });
+    body.querySelectorAll("[data-diag]").forEach(function (btn) {
+      btn.addEventListener("click", startDiagnose);
+    });
+  }
+
+  document.querySelectorAll(".wizard-close").forEach(function (btn) {
+    btn.addEventListener("click", closeWizard);
+  });
+  document.querySelectorAll("[data-open-wizard]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      openWizard(btn.getAttribute("data-open-wizard") || "start", btn.getAttribute("data-model") || model);
+    });
+  });
+})();
