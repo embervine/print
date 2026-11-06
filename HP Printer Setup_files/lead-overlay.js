@@ -62,12 +62,6 @@
       return;
     }
 
-    var consent = document.getElementById("lead-consent");
-    if (!consent || !consent.checked) {
-      showError("Please consent to sharing your contact details.");
-      return;
-    }
-
     // Complete navigation immediately; the third-party chat must never
     // hold the button in a waiting state or prevent troubleshooting guidance.
     var next = successCallback;
